@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Chat</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        /* General Reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Body Styles */
+        body {
+            background-color: #EDEDED;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        /* Login Section */
+        #login-section {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #login-section h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        #login-section input {
+            display: block;
+            width: 90%;
+            margin: 10px auto;
+            padding: 12px;
+            border-radius: 20px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+            outline: none;
+            color: #333;
+        }
+
+        #login-section button {
+            background-color: #25D366;
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 90%;
+            margin-top: 10px;
+        }
+
+        #login-section button:hover {
+            background-color: #1DA754;
+        }
+
+        /* Chat Section */
+        #chat-section {
+            width: 100%;
+            max-width: 600px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .chat-header {
+            background-color: #075E54;
+            color: white;
+            padding: 15px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            border-top-left-radius: 10px;
+            border-top-right-radius: 10px;
+        }
+
+        .chat-output {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background-color: #EDEDED;
+        }
+
+        .chat-output::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-output::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 10px;
+        }
+
+        .chat-message {
+            margin: 10px 0;
+            max-width: 80%;
+            word-wrap: break-word;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+
+        .user-message {
+            background-color: #DCF8C6;
+            align-self: flex-end;
+        }
+
+        .bot-message {
+            background-color: #fff;
+            align-self: flex-start;
+            border: 1px solid #ccc;
+        }
+
+        .message-sender {
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        /* Input Section */
+        .chat-input-section {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background-color: #fff;
+            border-top: 1px solid #ccc;
+            position: sticky;
+            bottom: 0;
+            border-bottom-left-radius: 10px;
+            border-bottom-right-radius: 10px;
+        }
+
+        #user-input {
+            flex-grow: 1;
+            padding: 10px;
+            border-radius: 20px;
+            border: 1px solid #ccc;
+            outline: none;
+            resize: none;
+            font-size: 14px;
+        }
+
+        #send-btn {
+            margin-left: 10px;
+            background-color: #25D366;
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #send-btn:hover {
+            background-color: #1DA754;
+        }
+
+        #send-btn svg {
+            fill: white;
+            width: 20px;
+            height: 20px;
+        }
+
+        /* File input for images */
+        #file-input {
+            display: none;
+        }
+
+        #file-btn {
+            margin-left: 10px;
+            background-color: #25D366;
+            border: none;
+            color: white;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Adjustments for responsive design */
+        @media (max-width: 600px) {
+            #login-section {
+                padding: 15px;
+                max-width: 350px;
+            }
+
+            #chat-section {
+                width: 100%;
+                max-width: 100%;
+                height: 100vh;
+                margin-top: 20px;
+            }
+
+            #user-input {
+                font-size: 12px;
+                padding: 8px;
+            }
+
+            .chat-header {
+                font-size: 16px;
+            }
+
+            .chat-message {
+                font-size: 12px;
+            }
+
+            #send-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="login-section">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Enter username" required>
+        <input type="password" id="password" placeholder="Enter password" required>
+        <button id="login-btn">Login</button>
+    </div>
+
+    <!-- Chat Section -->
+    <div id="chat-section" style="display: none;">
+        <div class="chat-header">
+            Welcome Friends
+        </div>
+        <div id="chat-output" class="chat-output"></div>
+        <div id="chat-input-section" class="chat-input-section">
+            <textarea id="user-input" placeholder="Type a message"></textarea>
+            <button id="send-btn">
+                <svg viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2v7z"></path></svg>
+            </button>
+            <!-- Add file input button -->
+            <button id="file-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24"><path d="M0 4v16h24V4H0zm12 12h-2v-2h2v2zm0-4h-2V7h2v5z"></path></svg>
+            </button>
+            <input type="file" id="file-input" accept="image/*">
+        </div>
+    </div>
+
+    <script>
+         const BACKEND_URL = "https://be0f-2401-4900-2182-bec9-987c-7861-783e-ee9e.ngrok-free.app";
+
+        let currentUser = "";
+
+        // Login Logic
+        document.getElementById("login-btn").addEventListener("click", () => {
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
+
+            if (username && password) {
+                socket.emit("login", { username, password });
+                currentUser = username;
+            } else {
+                alert("Please enter both username and password.");
+            }
+        });
+
+        // Handle login success
+        socket.on("login_success", (data) => {
+            document.getElementById("login-section").style.display = "none";
+            document.getElementById("chat-section").style.display = "flex";
+
+            const chatOutput = document.getElementById("chat-output");
+            chatOutput.innerHTML = ""; // Clear previous messages
+            data.messages.forEach(msg => appendMessage(msg.username, msg.message));
+        });
+
+        socket.on("login_failed", (data) => {
+            alert(data.error);
+        });
+
+        // Sending a message
+        document.getElementById("send-btn").addEventListener("click", () => {
+            const message = document.getElementById("user-input").value.trim();
+
+            if (message) {
+                socket.emit("send_message", { username: currentUser, message });
+                document.getElementById("user-input").value = ""; // Clear the input field
+                appendMessage(currentUser, message); // Append the user's message
+            }
+        });
+
+        // Append message to chat
+        function appendMessage(username, message) {
+            const chatOutput = document.getElementById("chat-output");
+            const messageDiv = document.createElement("div");
+            messageDiv.classList.add("chat-message");
+            messageDiv.classList.add(username === currentUser ? "user-message" : "bot-message");
+
+            messageDiv.innerHTML = `
+                <span class="message-sender">${username}</span>
+                <span class="message-content">${message}</span>
+            `;
+            chatOutput.appendChild(messageDiv);
+            chatOutput.scrollTop = chatOutput.scrollHeight; // Scroll to bottom
+        }
+
+        // Handle incoming messages
+        socket.on("receive_message", (data) => {
+            appendMessage(data.username, data.message);
+        });
+
+        // Handle file input for images
+        document.getElementById("file-btn").addEventListener("click", () => {
+            document.getElementById("file-input").click();
+        });
+
+        document.getElementById("file-input").addEventListener("change", (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const formData = new FormData();
+                formData.append("file", file);
+
+                fetch(BACKEND_URL + "/upload", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    appendMessage(currentUser, `<img src="${data.fileUrl}" alt="uploaded image" style="max-width: 300px;"/>`);
+                })
+                .catch(error => console.error("Error uploading file:", error));
+            }
+        });
+    </script>
+</body>
+</html>
+                
