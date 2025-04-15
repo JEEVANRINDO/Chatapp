@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>WhatsApp-Style Chat</title>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+  <style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  body {
+    background: #e0e0e0;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  #login-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background: #00a884;
+    padding: 20px;
+  }
+
+  .login-container {
+    background: white;
+    padding: 40px 30px;
+    border-radius: 16px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .login-container h2 {
+    color: #41525d;
+    margin-bottom: 24px;
+    font-size: 24px;
+    font-weight: 300;
+    text-align: center;
+  }
+
+  .login-input {
+    width: 100%;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    border: 1px solid #e9edef;
+    border-radius: 8px;
+    font-size: 15px;
+    background: #f5f6f7;
+    transition: all 0.3s ease;
+  }
+
+  .login-input:focus {
+    outline: none;
+    border-color: #00a884;
+    background: white;
+  }
+
+  #login-btn {
+    width: 100%;
+    padding: 12px;
+    background: #00a884;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+
+  #login-btn:hover {
+    background: #008f74;
+  }
+
+  #chat-section {
+    display: none;
+    flex-direction: column;
+    height: 100vh;
+    width: 100%;
+    background: #efeae2;
+    position: relative;
+  }
+
+  .chat-header {
+    background: #00a884;
+    padding: 16px 20px;
+    color: white;
+    font-size: 18px;
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+  }
+
+  .chat-output {
+    flex: 1;
+    overflow-y: auto;
+    padding: 80px 16px 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    scroll-behavior: smooth;
+    overflow-anchor: auto;
+  }
+
+  .message-container {
+    display: flex;
+    flex-direction: column;
+    max-width: 80%;
+    margin: 4px 0;
+  }
+
+  .message-container.sent {
+    align-self: flex-end;
+  }
+
+  .message-container.received {
+    align-self: flex-start;
+  }
+
+  .message-bubble {
+    padding: 8px 12px;
+    border-radius: 7.5px;
+    font-size: 15px;
+    line-height: 1.4;
+    position: relative;
+    word-wrap: break-word;
+  }
+
+.sent .message-bubble {
+    background: #d9fdd3;
+    border-radius: 7.5px 0 7.5px 7.5px;
+    margin-left: auto;
+  }
+
+  .received .message-bubble {
+    background: white;
+    border-radius: 0 7.5px 7.5px 7.5px;
+  }
+
+  .message-time {
+    font-size: 11px;
+    color: #667781;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .chat-input-container {
+    background: #f0f2f5;
+    padding: 12px 16px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    border-top: 1px solid #e9edef;
+  }
+
+  #user-input {
+    flex: 1;
+    min-height: 40px;
+    max-height: 100px;
+    padding: 9px 12px;
+    border: none;
+    border-radius: 8px;
+    background: white;
+    font-size: 15px;
+    resize: none;
+    overflow-y: auto;
+  }
+
+  #user-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #00a88433;
+  }
+
+  .button-icon {
+    background: #00a884;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.3s ease;
+  }
+
+  .button-icon:hover {
+    background: #008f74;
+  }
+
+  .button-icon img {
+    width: 20px;
+    height: 20px;
+    filter: brightness(0) invert(1);
+  }
+
+  .image-preview {
+    max-width: 200px;
+    border-radius: 8px;
+    margin-top: 4px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  .image-preview:hover {
+    transform: scale(1.02);
+  }
+
+  @media (max-width: 600px) {
+    .login-container {
+      padding: 30px 20px;
+      margin: 16px;
+    }
+
+    .chat-header {
+      padding: 12px 16px;
+      font-size: 16px;
+    }
+
+    .chat-output {
+      padding: 70px 12px 90px;
+    }
+
+  .message-bubble {
+      font-size: 14px;
+      padding: 6px 10px;
+    }
+
+    .chat-input-container {
+      padding: 10px 12px;
+    }
+
+    #user-input {
+      font-size: 14px;
+      min-height: 36px;
+    }
+
+    .button-icon {
+      width: 36px;
+      height: 36px;
+    }
+  }
+
+  .typing-indicator {
+    background: white;
+    padding: 8px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    color: #667781;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+  }
+
+  .online-status {
+    font-size: 12px;
+    color: #667781;
+    margin-left: 8px;
+  }
+  </style>
+</head>
+<body>
+  <!-- Login Section -->
+  <div id="login-section">
+    <div class="login-container">
+      <h2>Welcome to ChatApp</h2>
+      <input type="text" id="username" class="login-input" placeholder="Username">
+      <input type="password" id="password" class="login-input" placeholder="Password">
+      <button id="login-btn" class="button-icon">Sign In</button>
+    </div>
+  </div>
+
+  <!-- Chat Section -->
+  <div id="chat-section">
+    <div class="chat-header">
+      <span>ChatApp</span>
+      <div class="online-status">● Online</div>
+    </div>
+    
+    <div id="chat-output" class="chat-output"></div>
+    
+    <div class="chat-input-container">
+      <input type="file" id="image-input" accept="image/*" style="display: none;">
+      <button id="image-btn" class="button-icon" title="Attach file">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMTkgMTFjMC0zLjg3LTMuMTMtNy03LTdzLTcgMy4xMy03IDcgMy4xMyA3IDcgN2gxMHYySDVjLTEuMSAwLTItLjktMi0yVjVjMC0xLjEuOS0yIDItMmgxNGMxLjEgMCAyIC45IDIgMnYxMGgtMnYtNHptLTYgMGMwLTEuNjUtMS4zNS0zLTMtM3MtMyAxLjM1LTMgMyAxLjM1IDMgMyAzIDMtMS4zNSAzLTMuMDF6TTE5IDloLTJWN2gtMnYyaC0yVjdoLTJ2MmgtMnYyaDE2di0yeiIvPjwvc3ZnPg==">
+      </button>
+      <textarea id="user-input" placeholder="Type a message"></textarea>
+      <button id="send-btn" class="button-icon" title="Send message">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0Ij48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMi4wMSAyMSAyMyAxMiAyLjAxIDMgMiAyMGwxMCA0IDEwLTQtMTEtMTEuNSAxMSAxLjUtMTAgNFoiLz48L3N2Zz4=">
+      </button>
+    </div>
+  </div>
+
+  <script>
+ 
+  const NGROK_URL = "http://192.168.170.41:8080";
+  const socket = io(NGROK_URL, {
+    transports: ['websocket'],
+    path: "/socket.io",
+    secure: true,
+    reconnectionAttempts: 5
+  });
+
+  let currentUser = null;
+
+  // Load chat history
+  function loadChatHistory() {
+    const savedMessages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+    savedMessages.forEach(msg => {
+      appendMessage(msg.username, msg.message, msg.isImage);
+    });
+  }
+
+  // Save message
+  function saveMessage(sender, content, isImage = false) {
+    const messages = JSON.parse(localStorage.getItem('chatMessages') || '[]');
+    messages.push({ username: sender, message: content, isImage });
+    localStorage.setItem('chatMessages', JSON.stringify(messages));
+  }
+
+  // Login handler
+  document.getElementById('login-btn').addEventListener('click', () => {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value.trim();
+    
+    if (username && password) {
+      socket.emit('login', { username, password });
+      currentUser = username;
+    } else {
+      alert('Please enter both username and password');
+    }
+  });
+
+  // Socket handlers
+  socket.on('login_success', (data) => {
+    document.getElementById('login-section').style.display = 'none';
+    document.getElementById('chat-section').style.display = 'flex';
+    loadChatHistory();
+    
+    // Load any existing messages from server
+    if (data.messages && data.messages.length > 0) {
+      data.messages.forEach(msg => {
+        appendMessage(msg.username, msg.message, msg.isImage);
+      });
+    }
+  });
+
+  socket.on('login_failed', (error) => {
+    alert(`Login failed: ${error}`);
+  });
+
+  socket.on('new_message', (data) => {
+    if (data.username !== currentUser) {
+      appendMessage(data.username, data.message);
+      saveMessage(data.username, data.message);
+    }
+  });
+
+  socket.on('new_image', (data) => {
+    if (data.username !== currentUser) {
+      appendMessage(data.username, data.image, true);
+      saveMessage(data.username, data.image, true);
+    }
+  });
+
+  // Message handling
+  document.getElementById('send-btn').addEventListener('click', sendMessage);
+  document.getElementById('user-input').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  });
+
+  function sendMessage() {
+    const message = document.getElementById('user-input').value.trim();
+    if (message) {
+      socket.emit('send_message', { username: currentUser, message });
+      appendMessage(currentUser, message);
+      saveMessage(currentUser, message);
+      document.getElementById('user-input').value = '';
+    }
+  }
+
+  // Image handling
+  document.getElementById('image-btn').addEventListener('click', () => {
+    document.getElementById('image-input').click();
+  });
+
+  document.getElementById('image-input').addEventListener('change', function() {
+    const file = this.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        socket.emit('send_image', { username: currentUser, image: e.target.result });
+        appendMessage(currentUser, e.target.result, true);
+        saveMessage(currentUser, e.target.result, true);
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  // Append messages
+  function appendMessage(sender, content, isImage = false) {
+    const chatOutput = document.getElementById('chat-output');
+    const isSent = sender === currentUser;
+    
+    const container = document.createElement('div');
+    container.className = `message-container ${isSent ? 'sent' : 'received'}`;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'message-bubble';
+
+    if (isImage) {
+      const img = new Image();
+      img.src = content;
+      img.className = 'image-preview';
+      img.onclick = () => window.open(img.src, '_blank');
+      bubble.appendChild(img);
+    } else {
+      bubble.textContent = content;
+    }
+
+    const time = document.createElement('div');
+    time.className = 'message-time';
+    time.innerHTML = `
+      ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+      ${isSent ? '✓✓' : ''}
+    `;
+
+    container.appendChild(bubble);
+    container.appendChild(time);
+    chatOutput.appendChild(container);
+    chatOutput.scrollTop = chatOutput.scrollHeight;
+  }
+
+  // Initial load
+  window.onload = loadChatHistory;
+  </script>
+</body>
+</html>
